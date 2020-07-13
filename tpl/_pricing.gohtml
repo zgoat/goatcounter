@@ -1,4 +1,4 @@
-{{if .Site}}<fieldset id="home-pricing" class="plan">{{else}}<div id="home-pricing">{{end}}
+{{if .Site}}<fieldset id="home-pricing" class="plan">{{else}}<div id="home-pricing"><span>{{end}}
 	{{if .Site}}
 		<input type="radio" name="plan" id="personal" value="personal" {{if eq .Site.Plan "personal"}}checked{{end}}>
 	{{end}}
@@ -62,7 +62,7 @@
 			<li>Phone support</li>
 		</ul>
 	{{if .Site}}</label>{{else}}</div>{{end}}
-{{if .Site}}</fieldset>{{else}}</div>{{end}}
+{{if .Site}}</span></fieldset>{{else}}</div>{{end}}
 <div id="home-pricing-custom">
 	<a href="https://www.goatcounter.com/contact">Contact</a> if you need more pageviews or want a privately installed hosted option.<br>
 	<a href="https://www.goatcounter.com/help#billing">Pricing FAQ</a>

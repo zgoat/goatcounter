@@ -12694,6 +12694,7 @@ http://nicolasgallagher.com/micro-clearfix-hack/
 				},
 				error: function(xhr, settings, e) {
 					err(err);
+					on_error(` + "`" + `/billing/start: csrf: ${csrf}; plan: ${plan}; q: ${quantity}; xhr: ${xhr}` + "`" + `)
 				},
 				complete: function() {
 					form.find('button').attr('disabled', false).text('Continue');
@@ -13629,8 +13630,8 @@ noscript p { margin: .5em; }
 #home-pricing input  { display: none; }
 #home-pricing input:checked+label { background-color: #f7f7f7; }
 /* Copy from style.css */
-#home-pricing        { display: flex; justify-content: space-between; text-align: center; align-items: flex-start; }
-#home-pricing >label   { box-shadow: 0 0 4px #cdc8a4; background-color: #fff; width: calc(25% - .5em); }
+#home-pricing        { text-align: center; }
+#home-pricing >label { float: left; margin-right: .5em; box-shadow: 0 0 4px #cdc8a4; background-color: #fff; width: calc(25% - .5em); }
 #home-pricing h3     { margin: .5em 0; }
 #home-pricing ul     { list-style: none; padding: 0; line-height: 2.5em; }
 #home-signup         { text-align: center; margin-top: 2em; }
@@ -13642,7 +13643,7 @@ noscript p { margin: .5em; }
 	#home-pricing >label { width: 45%; margin: 1em; }
 }
 @media (max-width: 37rem) {
-	#home-pricing >label        { margin-bottom: 1em; width: 100%; }
+	#home-pricing >label        { margin-bottom: 1em; width: 90%; }
 	#home-pricing >label .empty { display: none; }
 	#home-pricing ul          { line-height: 2em; }
 	#home-pricing h3          { padding-top: .5em; }
@@ -15761,7 +15762,7 @@ Martin
 <meta name="msapplication-TileColor" content="#9f00a7">
 <meta name="theme-color" content="#ffffff">
 `),
-	"tpl/_pricing.gohtml": []byte(`{{if .Site}}<fieldset id="home-pricing" class="plan">{{else}}<div id="home-pricing">{{end}}
+	"tpl/_pricing.gohtml": []byte(`{{if .Site}}<fieldset id="home-pricing" class="plan">{{else}}<div id="home-pricing"><span>{{end}}
 	{{if .Site}}
 		<input type="radio" name="plan" id="personal" value="personal" {{if eq .Site.Plan "personal"}}checked{{end}}>
 	{{end}}
@@ -15825,7 +15826,7 @@ Martin
 			<li>Phone support</li>
 		</ul>
 	{{if .Site}}</label>{{else}}</div>{{end}}
-{{if .Site}}</fieldset>{{else}}</div>{{end}}
+{{if .Site}}</span></fieldset>{{else}}</div>{{end}}
 <div id="home-pricing-custom">
 	<a href="https://www.goatcounter.com/contact">Contact</a> if you need more pageviews or want a privately installed hosted option.<br>
 	<a href="https://www.goatcounter.com/help#billing">Pricing FAQ</a>

@@ -484,42 +484,39 @@ func (b AdminBotlog) Insert(ctx context.Context, ip string) error {
 	if newIP {
 		bgrun.Run(func() {
 			// apk add whois drill
-			whois, err := exec.Command("whois", "-r", "--", "--resource", ip).CombinedOutput()
-			if err != nil {
-				zlog.Fields(zlog.F{"ip": ip, "out": string(whois)}).Error(err)
-			}
+			whois, _ := exec.Command("whois", "-r", "--", "--resource", ip).CombinedOutput()
 			var info strings.Builder
-			for _, line := range bytes.Split(bytes.TrimSpace(whois), []byte("\n")) {
-				if len(line) == 0 {
-					info.WriteRune('\n')
-					continue
-				}
+			if err == nil {
+				for _, line := range bytes.Split(bytes.TrimSpace(whois), []byte("\n")) {
+					if len(line) == 0 {
+						info.WriteRune('\n')
+						continue
+					}
 
-				if line[0] == '%' ||
-					bytes.HasPrefix(line, []byte("remarks:")) ||
-					bytes.HasPrefix(line, []byte("created:")) ||
-					bytes.HasPrefix(line, []byte("last-modified:")) {
-					continue
+					if line[0] == '%' ||
+						bytes.HasPrefix(line, []byte("remarks:")) ||
+						bytes.HasPrefix(line, []byte("created:")) ||
+						bytes.HasPrefix(line, []byte("last-modified:")) {
+						continue
+					}
 				}
 			}
 
 			drill, err := exec.Command("drill", "-x", ip).CombinedOutput()
-			if err != nil {
-				zlog.Fields(zlog.F{"ip": ip, "out": string(whois)}).Error(err)
-			}
-
-			ptr := ""
-			lines := bytes.Split(drill, []byte("\n"))
-			for i, line := range lines {
-				if bytes.HasPrefix(line, []byte(";; ANSWER SECTION:")) {
-					answer := string(lines[i+1])
-					if !strings.Contains(answer, "PTR") {
-						ptr = "<not set>"
-					} else {
-						x := strings.Fields(answer)
-						ptr = x[len(x)-1]
+			var ptr string
+			if err == nil {
+				lines := bytes.Split(drill, []byte("\n"))
+				for i, line := range lines {
+					if bytes.HasPrefix(line, []byte(";; ANSWER SECTION:")) {
+						answer := string(lines[i+1])
+						if !strings.Contains(answer, "PTR") {
+							ptr = "<not set>"
+						} else {
+							x := strings.Fields(answer)
+							ptr = x[len(x)-1]
+						}
+						break
 					}
-					break
 				}
 			}
 

@@ -31,6 +31,9 @@ import (
 type billing struct{}
 
 func (h billing) mount(pub, auth chi.Router) {
+	pub = pub.With(zhttp.Log(true, ""))
+	auth = auth.With(zhttp.Log(true, ""))
+
 	auth.Get("/billing", zhttp.Wrap(h.index))
 
 	pauth := auth.With(noSubSites)
@@ -173,6 +176,13 @@ func (h billing) start(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	// Temporary log, since I got some JS "Bad Request" errors without any
+	// detail which I can't reproduce :-/
+	zlog.Fields(zlog.F{
+		"args": args,
+		"site": site.Code,
+	}).Printf("billing/start")
+
 	v := zvalidate.New()
 	v.Required("plan", args.Plan)
 	v.Include("plan", args.Plan, goatcounter.Plans)
@@ -212,7 +222,7 @@ func (h billing) start(w http.ResponseWriter, r *http.Request) error {
 	var id zstripe.ID
 	_, err = zstripe.Request(&id, "POST", "/v1/checkout/sessions", body.Encode())
 	if err != nil {
-		return err
+		return errors.Errorf("zstripe failed: %w; body: %s", err, body.Encode())
 	}
 
 	return zhttp.JSON(w, id)
@@ -282,7 +292,7 @@ type Session struct {
 		Currency string `json:"currency"`
 		Quantity int    `json:"quantity"`
 		Plan     struct {
-			Nickname string `json:"nickname"`
+			ID string `json:"id"`
 		} `json:"plan"`
 	} `json:"display_items"`
 }
@@ -303,8 +313,6 @@ func (h billing) stripeWebhook(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println(string(event.Data.Raw))
 
 		if strings.HasPrefix(s.ClientReferenceID, "one-time") {
 			bgrun.Run(func() {
@@ -333,9 +341,16 @@ func (h billing) stripeWebhook(w http.ResponseWriter, r *http.Request) error {
 				return
 			}
 
+			var plan string
+			for name, p := range stripePlans[cfg.Prod] {
+				if p == s.DisplayItems[0].Plan.ID {
+					plan = name
+				}
+			}
+
 			amount := fmt.Sprintf("%s %d", strings.ToUpper(s.DisplayItems[0].Currency),
 				s.DisplayItems[0].Amount*s.DisplayItems[0].Quantity/100)
-			err = site.UpdateStripe(ctx, s.Customer, s.DisplayItems[0].Plan.Nickname, amount)
+			err = site.UpdateStripe(ctx, s.Customer, plan, amount)
 			if err != nil {
 				l.Error(err)
 				return

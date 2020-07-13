@@ -384,6 +384,7 @@
 				},
 				error: function(xhr, settings, e) {
 					err(err);
+					on_error(`/billing/start: csrf: ${csrf}; plan: ${plan}; q: ${quantity}; xhr: ${xhr}`)
 				},
 				complete: function() {
 					form.find('button').attr('disabled', false).text('Continue');
