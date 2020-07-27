@@ -1,31 +1,36 @@
-language: go
-os: ['linux', 'osx', 'windows']
-go: ['1.13.x', '1.14.x']
-services: ['postgresql']
+language:       'go'
+go:             ['1.14.x']
+env:            ['GO111MODULE=on']
+go_import_path: 'zgo.at/goatcounter'
+jobs:
+  include:
+    - {'os': 'linux',   'arch': 'amd64'}
+    - {'os': 'linux',   'arch': 'amd64', 'go': ['1.13.x']}
+    - {'os': 'linux',   'arch': 'arm64'}
+    - {'os': 'linux',   'arch': 'ppc64le'}
+    - {'os': 'linux',   'arch': 's390x'}
+    - {'os': 'osx',     'arch': 'amd64'}
+    - {'os': 'windows', 'arch': 'amd64'}
+
 # GoatCounter.com actually runs on 12.2, but this is the latest version that
 # seems easily installable on Travis.
-addons:
-  postgresql: '10'
-go_import_path: 'zgo.at/goatcounter'
-env: ['GO111MODULE=on']
-cache:
-  directories:
-    - '$HOME/.cache/go-build'
-notifications:
-  email: false
+services: ['postgresql']
+addons:   {'postgresql': '10'}
 
+cache:
+  directories: ['$HOME/gopath/pkg/mod', '$HOME/.cache/go-build', '$HOME/Library/Caches/go-build', '$HOME/AppData/Local/go-build']
 before_cache:
-  - 'rm -rf $HOME/.cache/go-build/log.txt $GOPATH/pkg/mod/cache/vcs'
+  - 'rm -f "$HOME/.cache/go-build/log.txt" "$HOME/Library/Caches/go-build/log.txt" "$HOME/AppData/Local/go-build/log.txt"'
 
 script:
-  - 'go run ./cmd/check ./...'
-  - 'go test -race -timeout=3m ./...'
-  - '[ "$TRAVIS_OS_NAME" = "linux" ] && go test -tags=testpg -race -timeout=3m ./... || true'
-  # For some reason this doesn't work well on Windows:
-  #     gofmt: exit status 2: ./pack/pack.go:15:6: unknown escape sequence
-  #     ./pack/pack.go:15:14: unknown escape sequence
-  #     ./pack/pack.go:24:6: unknown escape sequence
-  #     ./pack/pack.go:24:14: unknown escape sequence
-  #     [.. loads more ..]
-  # But the resulting file looks okay if I "head -n100" it?
-  # - 'go generate ./... && [ $(git status -s | wc -l) -gt 1 ] && git diff && exit 1 || true'
+  - '[ "$TRAVIS_CPU_ARCH" = "s390x" ] && RACE=off || RACE=on'
+  - '[ "$TRAVIS_CPU_ARCH" = "amd64" -a "$TRAVIS_OS_NAME" = "linux" ] && PGSQL=on || PGQSL=off'
+
+    # Linter only on Linux as macOS and Windows is slow enough.
+  - 'if [ "$TRAVIS_OS_NAME" = "linux" ]; then  go run ./cmd/check ./...; fi'
+
+    # -race not supported on s390x.
+  - 'if [ "$RACE" = "on" ]; then                go test -race -timeout=3m ./...; else go test -timeout=3m ./... ; fi'
+
+    # PostgreSQL only runs on linux/amd64 in Travis.
+  - 'if [ "${PGSQL:-}" = "on" ]; then          go test -tags=testpg -race -timeout=3m ./...; fi'
