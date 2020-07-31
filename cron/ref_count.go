@@ -7,18 +7,12 @@ package cron
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"zgo.at/errors"
 	"zgo.at/goatcounter"
 	"zgo.at/goatcounter/cfg"
-	"zgo.at/zcache"
 	"zgo.at/zdb"
 )
-
-var cacheRefCount = zcache.New(1*time.Hour, 5*time.Minute)
-
-type cacheRefCountEntry struct{ total, totalUnique int }
 
 func updateRefCounts(ctx context.Context, hits []goatcounter.Hit) error {
 	return zdb.TX(ctx, func(ctx context.Context, tx zdb.DB) error {
@@ -63,7 +57,7 @@ func updateRefCounts(ctx context.Context, hits []goatcounter.Hit) error {
 		siteID := goatcounter.MustGetSite(ctx).ID
 		for _, v := range grouped {
 			cacheRefCount.SetDefault(strconv.FormatInt(siteID, 10)+v.hour+v.path+v.ref,
-				cacheRefCountEntry{total: v.total, totalUnique: v.totalUnique})
+				&cacheCountEntry{total: v.total, totalUnique: v.totalUnique})
 
 			var err error
 			if cfg.PgSQL {
@@ -95,7 +89,7 @@ func existingRefCounts(
 
 	cached, ok := cacheRefCount.Get(strconv.FormatInt(siteID, 10) + hour + path + ref)
 	if ok {
-		x := cached.(cacheRefCountEntry)
+		x := cached.(*cacheCountEntry)
 		return x.total, x.totalUnique, nil
 	}
 

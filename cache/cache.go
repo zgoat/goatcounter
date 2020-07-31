@@ -5,42 +5,36 @@
 package cache
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
+	"zgo.at/goatcounter/cfg"
 	"zgo.at/zcache"
+	"zgo.at/zlog"
 )
 
 type Cache interface {
-	SetDefault(k string, x interface{})
+	SetDefault(k string, v interface{})
 	Get(k string) (interface{}, bool)
+	Flush()
+	Delete(k string)
 }
 
-func New(defaultExpiration, cleanupInterval time.Duration) Cache {
-	//if false {
-	//	return &memcached{mc: memcache.New("10.0.0.1:11211", "10.0.0.2:11211")}
-	//}
-	return &local{cache: zcache.New(defaultExpiration, cleanupInterval)}
-}
+var l = zlog.Module("cache")
 
-// Simple local memory cache.
-type local struct{ cache *zcache.Cache }
-
-func (c *local) Get(k string) (interface{}, bool)   { return c.cache.Get(k) }
-func (c *local) SetDefault(k string, x interface{}) { c.cache.SetDefault(k, x) }
-
-// Memcached cache.
-type memcached struct{ mc *memcache.Client }
-
-func (c *memcached) Get(k string) (interface{}, bool) {
-	// TODO: unserialize this.
-	item, err := c.mc.Get("foo")
-	return item, err == nil
-}
-func (c *memcached) SetDefault(k string, x interface{}) {
-	c.mc.Set(&memcache.Item{
-		Key: k,
-		// TODO: serialize this.
-		Value: []byte("my value"),
-	})
+func New(defaultExpiration, cleanupInterval time.Duration, keyPrefix string, kind interface{}) Cache {
+	if cfg.Memcached != "" {
+		l.Debugf("using memcached at %s", cfg.Memcached)
+		mcOnce.Do(func() {
+			mcConn = memcache.New(cfg.Memcached)
+			err := mcConn.Ping()
+			if err != nil {
+				panic(fmt.Sprintf("cannot connect to memcached at %s: %s", cfg.Memcached, err))
+			}
+		})
+		return &memcached{mc: mcConn, keyPrefix: keyPrefix, t: kind}
+	}
+	l.Debug("using in-memory cache")
+	return zcache.New(defaultExpiration, cleanupInterval)
 }

@@ -5,6 +5,7 @@
 package goatcounter
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -18,7 +19,6 @@ import (
 	"zgo.at/guru"
 	"zgo.at/json"
 	"zgo.at/tz"
-	"zgo.at/zcache"
 	"zgo.at/zdb"
 	"zgo.at/zhttp"
 	"zgo.at/zlog"
@@ -74,6 +74,18 @@ type Site struct {
 	State     string     `db:"state" json:"state"`
 	CreatedAt time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
+}
+
+func DecodeSite(v []byte) Site {
+	var s Site
+	d := json.NewDecoder(bytes.NewReader(v))
+	d.AllowReadonlyFields()
+	err := d.Decode(&s)
+	if err != nil {
+		zlog.Error(err)
+		return Site{}
+	}
+	return s
 }
 
 type SiteSettings struct {
@@ -367,11 +379,6 @@ func (s *Site) Delete(ctx context.Context) error {
 	s.State = StateDeleted
 	return nil
 }
-
-var (
-	sitesCacheByID     = zcache.New(zcache.NoExpiration, -1)
-	sitesCacheHostname = zcache.New(zcache.NoExpiration, -1)
-)
 
 // ByID gets a site by ID.
 func (s *Site) ByID(ctx context.Context, id int64) error {

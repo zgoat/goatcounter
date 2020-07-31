@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi"
 	"zgo.at/goatcounter"
 	"zgo.at/goatcounter/cfg"
+	"zgo.at/goatcounter/cron"
 	"zgo.at/goatcounter/handlers"
 	"zgo.at/zhttp"
 	"zgo.at/zlog"
@@ -44,10 +45,15 @@ func saas() (int, error) {
 	CommandLine.StringVar(&domain, "domain", "goatcounter.localhost:8081,static.goatcounter.localhost:8081", "")
 	CommandLine.StringVar(&stripe, "stripe", "", "")
 	CommandLine.StringVar(&plan, "plan", goatcounter.PlanPersonal, "")
+	CommandLine.StringVar(&cfg.Memcached, "memcached", "", "")
+
 	dbConnect, test, dev, automigrate, listen, flagTLS, from, err := flagsServe(&v)
 	if err != nil {
 		return 1, err
 	}
+
+	goatcounter.InitCache()
+	cron.InitCache()
 
 	cfg.GoatcounterCom = true
 	cfg.Plan = plan

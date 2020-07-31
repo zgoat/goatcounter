@@ -19,6 +19,7 @@ var (
 	Serve          bool
 	Port           string
 	EmailFrom      string
+	Memcached      string
 
 	RunningTests bool
 )

@@ -19,6 +19,7 @@ require (
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/tools v0.0.0-20200721223218-6123e77877b2
+	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 	honnef.co/go/tools v0.0.1-2020.1.4
 	zgo.at/blackmail v0.0.0-20200703094839-f1e44ef1dbb8
 	zgo.at/errors v0.0.0-20200725175708-8255739ad6ec
