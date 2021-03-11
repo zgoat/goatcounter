@@ -2,7 +2,7 @@
 # <UDF name="goatcounter_domain"   label="Domain you'll be hosting GoatCounter on" example="stats.example.com" />
 # <UDF name="goatcounter_email"    label="Your email address"                      example="me@example.com" />
 # <UDF name="goatcounter_password" label="Password to access GoatCounter"          example="Password 1234 :-)" />
-# <UDF name="goatcounter_version"  label="GoatCounter version"                     default="v1.4.1" />
+# <UDF name="goatcounter_version"  label="GoatCounter version"                     default="v1.5.0" />
 #
 # This is a "StackScript" to deploy GoatCounter on a Linode VPS; it's available
 # in Linode as: https://cloud.linode.com/stackscripts/659823
@@ -33,7 +33,7 @@
 #
 
 # GoatCounter version to set up.
-v=${GOATCOUNTER_VERSION:-v1.4.1}
+v=${GOATCOUNTER_VERSION:-v1.5.0}
 
 
 set -eu
