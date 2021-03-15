@@ -5,16 +5,11 @@
 package main
 
 import (
-	"testing"
+	"context"
+
+	"zgo.at/zli"
 )
 
-func TestMigrate(t *testing.T) {
-	exit, _, out, _, dbc := startTest(t)
-
-	runCmd(t, exit, "migrate", "-db="+dbc, "pending")
-	wantExit(t, exit, out, 0)
-	want := "no pending migrations\n"
-	if out.String() != want {
-		t.Error(out.String())
-	}
+func cmdDBAPIKey(ctx context.Context, cmd string, f zli.Flags) error {
+	return nil
 }

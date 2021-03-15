@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestDb(t *testing.T) {
+func TestDB(t *testing.T) {
 	exit, _, out, _, dbc := startTest(t)
 
 	{
@@ -46,5 +46,16 @@ func TestDb(t *testing.T) {
 			t.Error()
 		}
 		out.Reset()
+	}
+}
+
+func TestDBMigrate(t *testing.T) {
+	exit, _, out, _, dbc := startTest(t)
+
+	runCmd(t, exit, "db", "migrate", "-db="+dbc, "pending")
+	wantExit(t, exit, out, 0)
+	want := "no pending migrations\n"
+	if out.String() != want {
+		t.Error(out.String())
 	}
 }

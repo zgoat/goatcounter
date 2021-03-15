@@ -1,0 +1,15 @@
+Hi there,
+
+{{.AddedBy}} created an account for you at {{.Site.URL .Context}}.
+
+{{if not .NewUser.Password}}
+	Please go here to set a password
+	{{if not .NewUser.EmailVerified}}
+	and verify your email address.
+	{{end}}.
+	{{unsafe (.Site.URL .Context)}}/user/reset/{{.User.LoginRequest}}
+{{else}}
+	A password has been set for your account; go to the above URL to log in.
+{{end}}
+
+{{template "_email_bottom.gotxt" .}}

@@ -108,8 +108,8 @@ Generally speaking only the latest release is supported, although critical fixes
 
 ### Deploy scripts and such
 
-- ["StackScript" for Linode][stackscript]; you can also use this for other
-  Alpine Linux machines.
+- ["StackScript" for Linode][stackscript]; Alpine Linux VPS; you can also use
+  this for other Alpine Linux machines.
 
   If you don't have a Linode account yet then consider using my [referral
   URL][linode] and I'll get some kickback from Linode :-)
@@ -127,6 +127,12 @@ Generally speaking only the latest release is supported, although critical fixes
   - https://github.com/anarcat/goatcounter/blob/Dockerfile/Dockerfile
 
   [docker]: https://www.youtube.com/watch?v=PivpCKEiQOQ
+
+- Some other guides people have written:
+  - [Replacing Google Analytics with GoatCounter](https://rgth.co/blog/replacing-google-analytics-with-goatcounter/) (Ubuntu)
+  - [GoatCounter self-hosted setup on a VPS](https://actually.fyi/posts/goatcounter-vps/) (Arch Linux)
+  - [GoatCounter server setup on OpenBSD](https://daulton.ca/2021/01/openbsd-goatcounter-server/)
+
 
 ### Building from source
 
@@ -176,9 +182,9 @@ to run it as root and can grant the appropriate permissions on Linux with:
 Listening on a different port can be a bit tricky due to the ACME/Let's Encrypt
 certificate generation; `goatcounter help listen` documents this in depth.
 
-You can create new sites with the `create` command:
+You can create new sites with the `db create site` command:
 
-    $ goatcounter create -email me@example.com -domain stats.example.com
+    $ goatcounter db create site -email me@example.com -domain stats.example.com
 
 This will ask for a password for your new account; you can also add a password
 on the commandline with `-password`. You must also pass the `-db` flag here if

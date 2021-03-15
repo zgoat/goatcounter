@@ -18,7 +18,7 @@
 
 		;[report_errors, dashboard, period_select, tooltip, billing_subscribe,
 			setup_datepicker, filter_pages, add_ip, fill_tz, bind_scale,
-			copy_pre, widget_settings, saved_views,
+			copy_pre, widget_settings, saved_views, manage_users,
 		].forEach(function(f) { f.call() })
 	})
 
@@ -630,6 +630,44 @@
 					},
 				})
 			})
+		})
+	}
+
+	var manage_users = function() {
+		var form = $('#add-user')
+		if (form.length === 0)
+			return
+
+		var siteAccess = false,
+			fullAccess = false
+
+		$('#js-per-site').on('click', function(e) {
+			e.preventDefault()
+
+			if (siteAccess) {
+				$('#add-user .site-access').css('display', 'none')
+				$(this).text('Set access per site')
+			}
+			else {
+				$('#add-user .site-access').css('display', 'block')
+				$(this).text('Use same access for all sites')
+			}
+			siteAccess = !siteAccess
+		})
+
+		$('input[name="access[all]"]').on('change', function(e) {
+			fullAccess = $(this).val() === 'a'
+
+			if (fullAccess) {
+				$('#js-per-site')
+			}
+
+
+			// if ($(this).val() === 'a') {
+			// 	$('#access-sites').css('display', 'none')
+			// } else {
+			// 	$('#access-sites').css('display', '')
+			// }
 		})
 	}
 

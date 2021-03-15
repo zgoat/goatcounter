@@ -1,3 +1,4 @@
+-- Get an aggregate of all bot User-Agents.
 with x as (
 	select user_agent_id, ua from user_agents
 	where isbot not in (0, 1)

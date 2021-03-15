@@ -8,11 +8,15 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"zgo.at/errors"
 	"zgo.at/guru"
+	"zgo.at/json"
 	"zgo.at/zdb"
 	"zgo.at/zstd/zbool"
 	"zgo.at/zstd/zcrypto"
@@ -26,19 +30,19 @@ type User struct {
 	ID   int64 `db:"user_id" json:"id,readonly"`
 	Site int64 `db:"site_id" json:"site,readonly"`
 
-	Email         string     `db:"email" json:"email"`
-	EmailVerified zbool.Bool `db:"email_verified" json:"email_verified,readonly"`
-	Password      []byte     `db:"password" json:"-"`
-	TOTPEnabled   zbool.Bool `db:"totp_enabled" json:"totp_enabled,readonly"`
-	TOTPSecret    []byte     `db:"totp_secret" json:"-"`
-	Role          string     `db:"role" json:"role,readonly"`
-	LoginAt       *time.Time `db:"login_at" json:"login_at,readonly"`
-	ResetAt       *time.Time `db:"reset_at" json:"reset_at,readonly"`
-	LoginRequest  *string    `db:"login_request" json:"-"`
-	LoginToken    *string    `db:"login_token" json:"-"`
-	Token         *string    `db:"csrf_token" json:"-"`
-	EmailToken    *string    `db:"email_token" json:"-"`
-	SeenUpdatesAt time.Time  `db:"seen_updates_at" json:"-"`
+	Email         string       `db:"email" json:"email"`
+	EmailVerified zbool.Bool   `db:"email_verified" json:"email_verified,readonly"`
+	Password      []byte       `db:"password" json:"-"`
+	TOTPEnabled   zbool.Bool   `db:"totp_enabled" json:"totp_enabled,readonly"`
+	TOTPSecret    []byte       `db:"totp_secret" json:"-"`
+	Access        UserAccesses `db:"access" json:"access,readonly"`
+	LoginAt       *time.Time   `db:"login_at" json:"login_at,readonly"`
+	ResetAt       *time.Time   `db:"reset_at" json:"reset_at,readonly"`
+	LoginRequest  *string      `db:"login_request" json:"-"`
+	LoginToken    *string      `db:"login_token" json:"-"`
+	Token         *string      `db:"csrf_token" json:"-"`
+	EmailToken    *string      `db:"email_token" json:"-"`
+	SeenUpdatesAt time.Time    `db:"seen_updates_at" json:"-"`
 
 	CreatedAt time.Time  `db:"created_at" json:"created_at,readonly"`
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at,readonly"`
@@ -47,7 +51,7 @@ type User struct {
 // Defaults sets fields to default values, unless they're already set.
 func (u *User) Defaults(ctx context.Context) {
 	if s := GetSite(ctx); s != nil && s.ID > 0 { // Not set in website.
-		u.Site = s.ID
+		u.Site = s.IDOrParent()
 	}
 
 	if u.CreatedAt.IsZero() {
@@ -103,20 +107,24 @@ func (u *User) hashPassword(ctx context.Context) error {
 }
 
 // Insert a new row.
-func (u *User) Insert(ctx context.Context) error {
+func (u *User) Insert(ctx context.Context, allowBlankPassword bool) error {
 	if u.ID > 0 {
 		return errors.New("ID > 0")
 	}
 
+	hasPassword := !(u.Password == nil && allowBlankPassword)
+
 	u.Defaults(ctx)
-	err := u.Validate(ctx, true)
+	err := u.Validate(ctx, hasPassword)
 	if err != nil {
 		return err
 	}
 
-	err = u.hashPassword(ctx)
-	if err != nil {
-		return errors.Wrap(err, "User.Insert")
+	if hasPassword {
+		err = u.hashPassword(ctx)
+		if err != nil {
+			return errors.Wrap(err, "User.Insert")
+		}
 	}
 
 	u.TOTPEnabled = zbool.Bool(false)
@@ -143,6 +151,12 @@ func (u *User) Insert(ctx context.Context) error {
 		return errors.Wrap(err, "User.Insert")
 	}
 	return nil
+}
+
+// Delete this user.
+func (u *User) Delete(ctx context.Context) error {
+	return errors.Wrap(zdb.Exec(ctx, `delete from users where user_id=? and site_id=?`,
+		u.ID, MustGetSite(ctx).ID), "User.Delete")
 }
 
 // Update this user's name, email.
@@ -218,6 +232,15 @@ func (u *User) ByEmailToken(ctx context.Context, key string) error {
 		MustGetSite(ctx).IDOrParent(), key), "User.ByEmailToken")
 }
 
+// ByID gets a user by id.
+func (u *User) ByID(ctx context.Context, id int64) error {
+	return errors.Wrap(zdb.Get(ctx, u,
+		`select * from users where
+			user_id=$1 and
+			(site_id=$2 or site_id=(select parent from sites where user_id=$2))
+		`, id, MustGetSite(ctx).ID), "User.ByID")
+}
+
 // ByEmail gets a user by email address.
 func (u *User) ByEmail(ctx context.Context, email string) error {
 	return errors.Wrap(zdb.Get(ctx, u,
@@ -261,18 +284,6 @@ func (u *User) ByTokenAndSite(ctx context.Context, token string) error {
 	return errors.Wrap(zdb.Get(ctx, u,
 		`select * from users where login_token=$1 and site_id=$2`,
 		token, MustGetSite(ctx).IDOrParent()), "User.ByTokenAndSite")
-}
-
-// BySite gets a user by site.
-func (u *User) BySite(ctx context.Context, id int64) error {
-	var s Site
-	err := s.ByID(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	return errors.Wrap(zdb.Get(ctx, u,
-		`select * from users where site_id=$1`, s.IDOrParent()), "User.ByID")
 }
 
 // RequestReset generates a new password reset key.
@@ -361,9 +372,64 @@ func (u *User) SeenUpdates(ctx context.Context) error {
 
 type Users []User
 
+// List all users for a site.
+func (u *Users) List(ctx context.Context, siteID int64) error {
+	var s Site
+	err := s.ByID(ctx, siteID)
+	if err != nil {
+		return err
+	}
+	return errors.Wrap(zdb.Select(ctx, u,
+		`select * from users where site_id=$1`, s.IDOrParent()), "Users.List")
+}
+
 // ByEmail gets all users with this email address.
 func (u *Users) ByEmail(ctx context.Context, email string) error {
 	return errors.Wrap(zdb.Select(ctx, u,
 		`select * from users where lower(email)=lower($1) order by user_id asc`, email),
 		"Users.ByEmail")
+}
+
+type (
+	UserAccesses map[string]UserAccess
+	UserAccess   string
+)
+
+const (
+	AccessReadOnly UserAccess = "r"
+	AccessSettings UserAccess = "s"
+	AccessAdmin    UserAccess = "a"
+)
+
+// Value implements the SQL Value function to determine what to store in the DB.
+func (ss UserAccesses) Value() (driver.Value, error) { return json.Marshal(ss) }
+
+// Scan converts the data returned from the DB into the struct.
+func (ss *UserAccesses) Scan(v interface{}) error {
+	switch vv := v.(type) {
+	case []byte:
+		return json.Unmarshal(vv, ss)
+	case string:
+		return json.Unmarshal([]byte(vv), ss)
+	default:
+		return fmt.Errorf("XXX.Scan: unsupported type: %T", v)
+	}
+}
+
+// Alowed checks if this user has access to this site for the permission.
+func (u User) Allowed(ctx context.Context, siteID int64, perm UserAccess) bool {
+	if u.Access["0"] == AccessAdmin {
+		return true
+	}
+
+	allow := u.Access[strconv.FormatInt(siteID, 32)] // JSON doesn't allow numbers as keys.
+	if allow == "" {
+		return false
+	}
+
+	if allow == AccessSettings {
+		return perm == AccessReadOnly || perm == AccessSettings
+	}
+
+	return perm == AccessReadOnly
 }

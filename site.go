@@ -270,6 +270,33 @@ func (s *Site) UpdateStripe(ctx context.Context) error {
 	return nil
 }
 
+func (s *Site) UpdateParent(ctx context.Context, newParent *int64) error {
+	if s.ID == 0 {
+		return errors.New("ID == 0")
+	}
+
+	s.Parent = newParent
+	if newParent != nil {
+		s.Plan = PlanChild
+	}
+
+	s.Defaults(ctx)
+	err := s.Validate(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = zdb.Exec(ctx,
+		`update sites set parent=?, plan=?, updated_at=? where site_id=?`,
+		s.Parent, s.Plan, s.UpdatedAt, s.ID)
+	if err != nil {
+		return errors.Wrap(err, "Site.UpdateParent")
+	}
+
+	s.ClearCache(ctx, false)
+	return nil
+}
+
 // UpdateCode changes the site's domain code (e.g. "test" in
 // "test.goatcounter.com").
 func (s *Site) UpdateCode(ctx context.Context, code string) error {
@@ -336,9 +363,20 @@ func (s *Site) UpdateCnameSetupAt(ctx context.Context) error {
 }
 
 // Delete a site and all child sites.
-func (s *Site) Delete(ctx context.Context) error {
+func (s *Site) Delete(ctx context.Context, deleteChildren bool) error {
 	if s.ID == 0 {
 		return errors.New("ID == 0")
+	}
+
+	if !deleteChildren {
+		var has int
+		err := zdb.Get(ctx, &has, `select 1 from sites where parent = ?`, s.ID)
+		if err != nil {
+			return errors.Wrap(err, "Site.Delete")
+		}
+		if has == 1 {
+			return fmt.Errorf("Site.Delete: site %d has linked sites", s.ID)
+		}
 	}
 
 	t := Now()
@@ -423,18 +461,6 @@ func (s *Site) ByStripe(ctx context.Context, stripe string) error {
 	return errors.Wrapf(err, "Site.ByStripe %s", stripe)
 }
 
-// GetMain gets the "main" site for this account; either the current site or the
-// parent one.
-func (s *Site) GetMain(ctx context.Context) error {
-	if s.ID == 0 {
-		return errors.New("s.ID == 0")
-	}
-	if s.Parent != nil {
-		return s.ByID(ctx, *s.Parent)
-	}
-	return nil
-}
-
 // ByCode gets a site by code.
 func (s *Site) ByCode(ctx context.Context, code string) error {
 	return errors.Wrapf(zdb.Get(ctx, s,
@@ -478,6 +504,17 @@ func (s *Site) ByHost(ctx context.Context, host string) error {
 	return nil
 }
 
+// Find a site: by ID if ident is a number, or by host if it's not.
+func (s *Site) Find(ctx context.Context, ident string) error {
+	id, err := strconv.ParseInt(ident, 10, 64)
+	if err == nil {
+		err = s.ByID(ctx, id)
+	} else {
+		err = s.ByHost(ctx, ident)
+	}
+	return errors.Wrap(err, "Site.Find")
+}
+
 // ListSubs lists all subsites, including the current site and parent.
 func (s *Site) ListSubs(ctx context.Context) ([]string, error) {
 	col := "code"
@@ -506,8 +543,6 @@ func (s Site) Domain(ctx context.Context) string {
 }
 
 // Display format: just the domain (cname or code+domain).
-//
-//lint:ignore U1001 used in template.
 func (s Site) Display(ctx context.Context) string {
 	if s.Cname != nil && s.CnameSetupAt != nil {
 		return *s.Cname
@@ -548,6 +583,18 @@ func (s Site) IDOrParent() int64 {
 		return *s.Parent
 	}
 	return s.ID
+}
+
+// GetMain gets the "main" site for this account; either the current site or the
+// parent one.
+func (s *Site) GetMain(ctx context.Context) error {
+	if s.ID == 0 {
+		return errors.New("s.ID == 0")
+	}
+	if s.Parent != nil {
+		return s.ByID(ctx, *s.Parent)
+	}
+	return nil
 }
 
 //lint:ignore U1001 used in template (via ShowPayBanner)

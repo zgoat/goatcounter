@@ -1,3 +1,4 @@
+-- Find User-Agents that weren't fully parsed by gadget.
 with x as (
 	select user_agent_id, ua,
 		browsers.name || ' ' || browsers.version as browser,

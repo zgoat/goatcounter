@@ -23,7 +23,7 @@
 # You can create additional sites with:
 #
 #     $ cd /home/goatcounter
-#     $ ./bin/goatcounter create -domain example.com -email me@example.com
+#     $ ./bin/goatcounter db create site -domain example.com -email me@example.com
 #
 # Files are stored in /home/goatcounter; see /var/log/goatcounter/current for
 # logs; and you can configure the flags it starts with in /etc/conf.d/goatcounter.
@@ -74,7 +74,7 @@ ln -sf "$dst" "/home/goatcounter/bin/goatcounter"
 
 # Set up site; this may fail if the site already exists, which is fine.
 cd /home/goatcounter
-./bin/goatcounter create -createdb -domain "$GOATCOUNTER_DOMAIN" -email "$GOATCOUNTER_EMAIL" -password "$GOATCOUNTER_PASSWORD" ||:
+./bin/goatcounter db create site -createdb -domain "$GOATCOUNTER_DOMAIN" -email "$GOATCOUNTER_EMAIL" -password "$GOATCOUNTER_PASSWORD" ||:
 chown -R goatcounter:goatcounter db
 
 # Set up log directory.

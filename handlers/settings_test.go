@@ -182,7 +182,7 @@ func TestSettingsSitesAdd(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				err = s.Delete(ctx)
+				err = s.Delete(ctx, false)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -211,7 +211,7 @@ func TestSettingsSitesAdd(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				err = s.Delete(ctx)
+				err = s.Delete(ctx, false)
 				if err != nil {
 					t.Fatal(err)
 				}

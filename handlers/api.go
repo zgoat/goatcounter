@@ -134,7 +134,7 @@ func (h api) auth(r *http.Request, perm goatcounter.APITokenPermissions) error {
 	}
 
 	var user goatcounter.User
-	err = user.BySite(r.Context(), token.SiteID)
+	err = user.ByID(r.Context(), token.UserID)
 	if err != nil {
 		return err
 	}

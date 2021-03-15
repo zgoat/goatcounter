@@ -1,3 +1,4 @@
+-- Get an aggregate of all User-Agents that are not bots.
 with x as (
 	select
 		user_agent_id, ua,

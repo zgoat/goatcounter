@@ -81,7 +81,7 @@ func (a *AdminStats) List(ctx context.Context) error {
 
 type AdminSiteStat struct {
 	Site           Site      `db:"-"`
-	User           User      `db:"-"`
+	Users          Users     `db:"-"`
 	LastData       time.Time `db:"last_data"`
 	CountTotal     int       `db:"count_total"`
 	CountLastMonth int       `db:"count_last_month"`
@@ -95,7 +95,7 @@ func (a *AdminSiteStat) ByID(ctx context.Context, id int64) error {
 		return err
 	}
 
-	err = a.User.BySite(ctx, id)
+	err = a.Users.List(ctx, id)
 	if err != nil {
 		return err
 	}

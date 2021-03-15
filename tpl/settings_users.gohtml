@@ -1,0 +1,74 @@
+{{template "_backend_top.gohtml" .}}
+
+{{template "_settings_nav.gohtml" .}}
+
+<h2>Users</h2>
+<table class="auto table-left">
+	<thead><tr><th>Email</th><th></th></tr></thead>
+	<tbody>
+		{{range $u := .Users}}<tr>
+			<td>{{$u.Email}}</td>
+			<td>
+				{{if and $.GoatcounterCom (eq (len $.Users) 1)}}
+					{{/* TODO: Should be can't delete last admin user */}}
+					Can’t delete last user
+				{{else}}
+					<form method="post" action="/settings/users/remove/{{$u.ID}}">
+						<input type="hidden" name="csrf" value="{{$.User.CSRFToken}}">
+						<button class="link">delete</button>
+					</form>
+				{{end}}
+				{{if eq $u.ID $.User.ID}}&nbsp;&nbsp;&nbsp;(current){{end}}
+			</td>
+		</tr>{{end}}
+</tbody></table>
+<br>
+<form method="post" action="/settings/users/add" id="add-user">
+	<input type="hidden" name="csrf" value="{{.User.CSRFToken}}">
+	<fieldset>
+		<legend>Add new user</legend>
+
+		<input type="text" autocomplete="new-password" id="email" name="email" placeholder="Email">
+		<span class="help">Email to login with{{if .GoatcounterCom}}; must be confirmed{{end}}.</span><br><br>
+
+		<input type="password" autocomplete="new-password" id="password" name="password" placeholder="Password">
+		<span class="help">Password; can be blank to send a password reset.</span><br><br>
+
+		{{define "access"}}
+			{{$all := eq (print .) "all"}}
+			<label><input type="radio" name="access[{{.}}]" value="r" {{if not $all}}disabled{{end}}        > Read only</label><br>
+			<label><input type="radio" name="access[{{.}}]" value="s" {{if not $all}}disabled{{end}} checked> Can change settings, except billing and site/user management</label><br>
+			{{if $all}}
+			<label><input type="radio" name="access[{{.}}]" value="a"> Full access</label><br>
+			{{end}}
+		{{end}}
+		<strong>Allow access:</strong><br>
+		{{template "access" "all"}}
+		<br>
+
+		<div id="full-access"></div>
+		<div id="access-sites">
+			<strong>Allow access to sites:</strong>
+			<sup><a href="#" id="js-per-site">Set access per site</a></sup>
+			<br>
+
+			{{range $s := .Sites}}
+				<label><input type="checkbox" checked> {{$s.Display $.Context}}</label><br>
+				<div class="site-access">
+					{{template "access" $s.ID}}
+				</div>
+			{{end}}
+			<br>
+			<label><input type="checkbox" checked> Give access to newly created sites</label><br>
+			<div class="site-access">
+				{{template "access" "new"}}
+			</div>
+		</div>
+
+		<button type="submit">Add new</button>
+	</fieldset>
+</form>
+
+{{template "_backend_bottom.gohtml" .}}
+
+

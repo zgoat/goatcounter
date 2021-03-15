@@ -5,25 +5,44 @@ This list is not comprehensive, and only lists new features and major changes,
 but not every minor bugfix. The goatcounter.com service generally runs the
 latest master.
 
-Unreleased v1.5.0
+Unreleased v2.0.0
 -----------------
 
-- Some rather large changes to the database layout (#383) for better efficiency
-  (**see below, action required for upgrade**).
+The version is bumped because this contains a number of incompatible changes;
+several `goatcouner` commands got changed. It also includes some potentially
+database migrations which change quite a few things, and running them is a bit
+more complex than the standard migrations.
 
-- The `goatcounter migrate` behaves a bit different (**incompatible**):
+An overview of **incompatible** changes:
+
+- `goatcounter migrate` is now `goatcounter db migrate`. It also behaves a bit
+  different:
 
   - `goatcounter migrate pending` lists only pending migrations, and will use
     exit code 1 if there are any pending migrations.
   - `goatcounter migrate list` lists all migrations, always exits with 0.
 
-- The build flag to set the version changed from (**incompatible**):
+- `goatcounter create` is now `goatcounter db site create`, and some flags got
+  changed:
+
+  - `-domain` is now `-vhost`.
+
+- The `-site` flag got removed from `goatcounter import`; you can now only use
+  `-url` to set a GoatCounter site to import to. You can use `goatcounter db
+  apikey create` to create an API key from the commandline.
+
+- The build flag to set the version changed from:
 
       -ldflags="-X main.version=..."
 
   to:
 
       -ldflags="-X zgo.at/goatcounter.Version=..."
+
+- There are some rather large changes to the database layout (#383) for better
+  efficiency (**see below, you really want to read this**).
+
+Other changes:
 
 - You can import pageviews from logfiles with the `goatcounter import` command;
   see `goatcounter help import` for details.
@@ -73,6 +92,8 @@ Unreleased v1.5.0
   Right now it doesn't try super-hard to simulate read-world usage patterns: the
   distribution is always uniform, but it still gives a reasonably accurate
   indication for comparison purposes.
+
+- Many other minor changes and improvements.
 
 ---
 

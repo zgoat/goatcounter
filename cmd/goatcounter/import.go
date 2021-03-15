@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -33,47 +32,32 @@ Import pageviews from an export or logfile.
 
 Overview:
 
-    You must give one filename to import; use - to read from stdin:
-
-        $ goatcounter import export.csv.gz
-
-    Or to keep reading from a log file:
-
-        $ goatcounter import -follow /var/log/nginx/access.log
-
     This requires a running GoatCounter server; it sends requests to the API
-    instead of modifying the database directly. If you use an ID or site code in
-    the -site flag an API key is generated automatically, which is the only
-    database access it needs.
-
-    Use an URL in -site if you want to send data to a remote instance without
-    requiring database access:
+    instead of modifying the database directly. You need to set
+    GOATCOUNTER_API_KEY to an API key with "Record pageviews" permissions:
 
         $ export GOATCOUNTER_API_KEY=[..]
         $ goatcounter import -site=https://stats.example.com export.csv.gz
 
-    You can create an API key in "Settings → Password, MFA, API" and requires
-    the "Record pageviews" permission.
+    You can create an API key with "goatcounter db create apikey -count", or
+    from the web interface in "Settings → Password, MFA, API".
+
+    You must give one filename to import; use - to read from stdin:
+
+	    $ goatcounter import -site=.. export.csv.gz
+
+    Or to keep reading from a log file:
+
+        $ goatcounter import -site=.. -follow /var/log/nginx/access.log
 
 Flags:
-
-  -db          Database connection: "sqlite://<file>" or "postgres://<connect>"
-               See "goatcounter help db" for detailed documentation. Default:
-               sqlite://db/goatcounter.sqlite3?_busy_timeout=200&_journal_mode=wal&cache=shared
-
-               Only needed if -site is not an URL.
 
   -debug       Modules to debug, comma-separated or 'all' for all modules.
                See "goatcounter help debug" for a list of modules.
 
   -silent      Don't show progress information.
 
-  -site        Site to import to, can be passed as an ID ("1") or site code
-               ("example") if you have access to the database. Can be omitted if there's only
-               one site in the db.
-
-               Use an URL ("https://stats.example.com") to send data to a remote
-               instance; this requires setting GOATCOUNTER_API_KEY.
+  -site        Site to import to, as an URL (e.g. "https://stats.example.com")
 
   -follow      Watch a file for new lines and import them. Existing lines are
                not processed.
@@ -208,23 +192,22 @@ Date and time parsing:
 
 func cmdImport(f zli.Flags, ready chan<- struct{}, stop chan struct{}) error {
 	var (
-		dbConnect = f.String("sqlite://db/goatcounter.sqlite3", "db").Pointer()
-		debug     = f.String("", "debug").Pointer()
-		siteFlag  = f.String("", "site").Pointer()
-		format    = f.String("csv", "format").Pointer()
-		date      = f.String("", "date").Pointer()
-		tyme      = f.String("", "time").Pointer()
-		datetime  = f.String("", "datetime").Pointer()
-		silent    = f.Bool(false, "silent").Pointer()
-		follow    = f.Bool(false, "follow").Pointer()
-		exclude   = f.StringList(nil, "exclude").Pointer()
+		debug    = f.String("", "debug").Pointer()
+		site     = f.String("", "site").Pointer()
+		format   = f.String("csv", "format").Pointer()
+		date     = f.String("", "date").Pointer()
+		tyme     = f.String("", "time").Pointer()
+		datetime = f.String("", "datetime").Pointer()
+		silent   = f.Bool(false, "silent").Pointer()
+		follow   = f.Bool(false, "follow").Pointer()
+		exclude  = f.StringList(nil, "exclude").Pointer()
 	)
 	err := f.Parse()
 	if err != nil {
 		return err
 	}
 
-	return func(dbConnect, debug, siteFlag, format, date, tyme, datetime string, silent, follow bool, exclude []string) error {
+	return func(debug, site, format, date, tyme, datetime string, silent, follow bool, exclude []string) error {
 		files := f.Args
 		if len(files) == 0 {
 			return fmt.Errorf("need a filename")
@@ -255,12 +238,13 @@ func cmdImport(f zli.Flags, ready chan<- struct{}, stop chan struct{}) error {
 
 		zlog.Config.SetDebug(debug)
 
-		url, key, clean, err := findSite(siteFlag, dbConnect)
-		if err != nil {
-			return err
+		url := strings.TrimRight(site, "/")
+		if !zstring.HasPrefixes(url, "http://", "https://") {
+			url = "https://" + url
 		}
-		if clean != nil {
-			defer clean()
+		key := os.Getenv("GOATCOUNTER_API_KEY")
+		if key == "" {
+			return errors.New("GOATCOUNTER_API_KEY must be set")
 		}
 
 		err = checkSite(url, key)
@@ -282,7 +266,7 @@ func cmdImport(f zli.Flags, ready chan<- struct{}, stop chan struct{}) error {
 			err = importCSV(fp, url, key, silent)
 		}
 		return err
-	}(*dbConnect, *debug, *siteFlag, *format, *date, *tyme, *datetime, *silent, *follow, *exclude)
+	}(*debug, *site, *format, *date, *tyme, *datetime, *silent, *follow, *exclude)
 }
 
 func importCSV(fp io.ReadCloser, url, key string, silent bool) error {
@@ -485,88 +469,6 @@ func newRequest(method, url, key string, body io.Reader) (*http.Request, error) 
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bearer "+key)
 	return r, nil
-}
-
-func findSite(siteFlag, dbConnect string) (string, string, func(), error) {
-	var (
-		url, key string
-		clean    func()
-	)
-	switch {
-	case strings.HasPrefix(siteFlag, "http://") || strings.HasPrefix(siteFlag, "https://"):
-		url = strings.TrimRight(siteFlag, "/")
-		if !strings.HasPrefix(url, "http") {
-			url = "https://" + url
-		}
-
-		key = os.Getenv("GOATCOUNTER_API_KEY")
-		if key == "" {
-			return "", "", nil, errors.New("GOATCOUNTER_API_KEY must be set")
-		}
-
-	default:
-		db, ctx, err := connectDB(dbConnect, []string{"pending"}, false, false)
-		if err != nil {
-			return "", "", nil, err
-		}
-		defer db.Close()
-
-		// So it uses https URLs in site.URL()
-		// TODO: should fix it to always use https even on dev and get rid of the
-		// exceptions.
-		// goatcounter.Config(ctx).Prod = true
-
-		var site goatcounter.Site
-		siteID, intErr := strconv.ParseInt(siteFlag, 10, 64)
-		switch {
-		default:
-			err = site.ByCode(ctx, siteFlag)
-		case intErr == nil && siteID > 0:
-			err = site.ByID(ctx, siteID)
-		case siteFlag == "":
-			var sites goatcounter.Sites
-			err := sites.UnscopedList(ctx)
-			if err != nil {
-				return "", "", nil, err
-			}
-
-			switch len(sites) {
-			case 0:
-				return "", "", nil, fmt.Errorf("there are no sites in the database")
-			case 1:
-				site = sites[0]
-			default:
-				return "", "", nil, fmt.Errorf("more than one site: use -site to specify which site to import")
-			}
-		}
-		if err != nil {
-			return "", "", nil, err
-		}
-		ctx = goatcounter.WithSite(ctx, &site)
-
-		var user goatcounter.User
-		err = user.BySite(ctx, site.ID)
-		if err != nil {
-			return "", "", nil, err
-		}
-		ctx = goatcounter.WithUser(ctx, &user)
-
-		token := goatcounter.APIToken{
-			SiteID:      site.ID,
-			Name:        "goatcounter import",
-			Permissions: goatcounter.APITokenPermissions{Count: true},
-		}
-		err = token.Insert(ctx)
-		if err != nil {
-			return "", "", nil, err
-		}
-
-		url = site.URL(ctx)
-		key = token.Token
-		clean = func() { token.Delete(ctx) }
-	}
-
-	return url, key, clean, nil
 }
 
 // Verify that the site is live and that we've got the correct permissions.

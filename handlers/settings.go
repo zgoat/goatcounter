@@ -60,6 +60,10 @@ func (h settings) mount(r chi.Router) {
 	r.Post("/settings/sites/remove/{id}", zhttp.Wrap(h.sitesRemove))
 	r.Post("/settings/sites/copySettings", zhttp.Wrap(h.sitesCopySettings))
 
+	r.Get("/settings/users", zhttp.Wrap(h.users(nil)))
+	r.Post("/settings/users/add", zhttp.Wrap(h.usersAdd))
+	r.Post("/settings/users/remove/{id}", zhttp.Wrap(h.usersRemove))
+
 	r.Get("/settings/purge", zhttp.Wrap(h.purge(nil)))
 	r.Get("/settings/purge/confirm", zhttp.Wrap(h.purgeConfirm))
 	r.Post("/settings/purge", zhttp.Wrap(h.purgeDo))
@@ -434,7 +438,7 @@ func (h settings) sitesRemove(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	sID := s.ID
-	err = s.Delete(r.Context())
+	err = s.Delete(r.Context(), false)
 	if err != nil {
 		return err
 	}
@@ -755,13 +759,8 @@ func (h settings) deleteDo(w http.ResponseWriter, r *http.Request) error {
 		bgrun.Run("email:deletion", func() {
 			contact := "false"
 			if args.ContactMe {
-				var u goatcounter.User
-				err := u.BySite(r.Context(), mainSite.ID)
-				if err != nil {
-					zlog.Error(err)
-				} else {
-					contact = u.Email
-				}
+				u := goatcounter.GetUser(r.Context())
+				contact = u.Email
 			}
 
 			blackmail.Send("GoatCounter deletion",
@@ -772,7 +771,7 @@ func (h settings) deleteDo(w http.ResponseWriter, r *http.Request) error {
 		})
 	}
 
-	err = mainSite.Delete(r.Context())
+	err = mainSite.Delete(r.Context(), true)
 	if err != nil {
 		return err
 	}

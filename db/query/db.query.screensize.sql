@@ -1,3 +1,4 @@
+-- Get an aggregate of all screen sizes.
 select
 	date(min(created_at)) as first_seen,
 	count(*) as count,

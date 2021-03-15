@@ -297,6 +297,11 @@ tr.target .chart-left { display: block; }
 	.tab-nav a { line-height: 2.5em; }
 }
 
+#add-user .site-access {
+	display: none;
+	margin-left: 2em;
+}
+
 /*** Widget settings
  *******************/
 .widget                { position: relative; margin-bottom: .5em; padding: .5em; padding-left: 2.5em;

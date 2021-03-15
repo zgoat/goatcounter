@@ -31,8 +31,6 @@ require (
 	golang.org/x/image v0.0.0-20210220032944-ac19c3e999fb
 	golang.org/x/net v0.0.0-20210222171744-9060382bd457
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210305215415-5cdee2b1b5a0 // indirect
-	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	golang.org/x/tools v0.1.0
 	honnef.co/go/tools v0.1.2
 	zgo.at/blackmail v0.0.0-20200703094839-f1e44ef1dbb8
@@ -44,9 +42,9 @@ require (
 	zgo.at/json v0.0.0-20200627042140-d5025253667f
 	zgo.at/tz v0.0.0-20201224084217-b40a2f90fff3
 	zgo.at/zcache v1.0.1-0.20210312004611-f411987af2e6
-	zgo.at/zdb v0.0.0-20210314014430-5fb69a0434a4
+	zgo.at/zdb v0.0.0-20210316234558-0f2d7bbae953
 	zgo.at/zhttp v0.0.0-20210313142737-b939d047b688
-	zgo.at/zli v0.0.0-20210314013617-b1271a855459
+	zgo.at/zli v0.0.0-20210316023527-5b2c4f923453
 	zgo.at/zlog v0.0.0-20201213081304-1dc74ce06e5f
 	zgo.at/zstd v0.0.0-20210316125320-8107c8cfb5a7
 	zgo.at/zstripe v1.1.1-0.20210316152211-8d12125402d1

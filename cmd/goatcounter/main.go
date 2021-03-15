@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	_ "time/tzdata"
 
@@ -67,11 +68,7 @@ func cmdMain(f zli.Flags, ready chan<- struct{}, stop chan struct{}) {
 		return
 
 	case "db", "database":
-		run = cmdDb
-	case "create":
-		run = cmdCreate
-	case "migrate":
-		run = cmdMigrate
+		run = cmdDB
 	case "reindex":
 		run = cmdReindex
 	case "serve":
@@ -84,6 +81,31 @@ func cmdMain(f zli.Flags, ready chan<- struct{}, stop chan struct{}) {
 		run = cmdImport
 	case "buffer":
 		run = cmdBuffer
+
+	// Old commands; print some guidance instead of just "command doesn't
+	// exist".
+	// TODO: remove in 2.1 or 2.2
+	case "migrate":
+		fmt.Fprintf(zli.Stderr,
+			"The migrate command is moved to \"goatcounter db migrate\"\n\n\t$ goatcounter db migrate %s\n",
+			strings.Join(os.Args[2:], " "))
+		zli.Exit(5)
+		return
+	case "create":
+		flags := os.Args[2:]
+		for i, ff := range flags {
+			if ff == "-domain" {
+				flags[i] = "-vhost"
+			}
+			if strings.HasPrefix(ff, "-domain=") {
+				flags[i] = "-vhost=" + ff[8:]
+			}
+		}
+		fmt.Fprintf(zli.Stderr,
+			"The create command is moved to \"goatcounter db create site\"\n\n\t$ goatcounter db create site %s\n",
+			strings.Join(flags, " "))
+		zli.Exit(5)
+		return
 	}
 
 	err := run(f, ready, stop)
@@ -115,7 +137,17 @@ func connectDB(connect string, migrate []string, create, dev bool) (zdb.DB, cont
 		zlog.Errorf("%s; continuing but things may be broken", err)
 		err = nil
 	}
-	return db, goatcounter.NewContext(db), err
+	var cErr *zdb.NotExistError
+	if errors.As(err, &cErr) {
+		// TODO: maybe ask for confirmation here?
+		err = fmt.Errorf("%s database at %q doesn't exist.\n"+
+			"Add the -createdb flag to create this database if you're sure this is the right location.",
+			cErr.Driver, cErr.DB)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	return db, goatcounter.NewContext(db), nil
 }
 
 func getVersion() string {

@@ -33,8 +33,8 @@ func cmdHelp(f zli.Flags, ready chan<- struct{}, stop chan struct{}) error {
 			continue
 		}
 		if a == "all" {
-			topics = []string{"help", "version", "migrate", "create", "serve",
-				"reindex", "buffer", "monitor", "db", "listen", "logfile", "debug"}
+			topics = []string{"help", "version", "serve", "reindex", "buffer",
+				"monitor", "db", "listen", "logfile", "debug"}
 			break
 		}
 		topics = append(topics, strings.ToLower(a))
@@ -71,19 +71,15 @@ var usage = map[string]string{
 	"":        usageTop,
 	"help":    usageHelp,
 	"serve":   usageServe,
-	"create":  usageCreate,
-	"migrate": usageMigrate,
 	"saas":    usageSaas,
 	"reindex": usageReindex,
 	"monitor": usageMonitor,
 	"import":  usageImport,
 	"buffer":  usageBuffer,
-
-	"database": helpDatabase,
-	"db":       helpDatabase,
-	"listen":   helpListen,
-	"logfile":  helpLogfile,
-	"debug":    helpDebug,
+	"db":      helpDB,
+	"listen":  helpListen,
+	"logfile": helpLogfile,
+	"debug":   helpDebug,
 
 	"version": `
 Show version and build information. This is printed as key=value, separated by
@@ -107,15 +103,13 @@ Use "help <topic>" or "cmd -h" for more details for a command or topic.
 Commands:
   help         Show help; use "help <topic>" or "help all" for more details.
   version      Show version and build information and exit.
-  create       Create a new site and user.
   serve        Start HTTP server.
   import       Import pageviews from an export or logfile.
 
-  migrate      Run database migrations.
+  db           Modify the database and print database info.
   reindex      Recreate the index tables (*_stats, *_count) from the hits.
   buffer       Buffer pageview requests until backend is available.
   monitor      Monitor for pageviews.
-  db           Print database information and detailed docs on the -db flag.
 
 Extra help topics:
   listen       Detailed documentation on -listen and -tls flags.

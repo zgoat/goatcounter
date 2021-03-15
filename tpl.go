@@ -283,6 +283,12 @@ type (
 		Site    Site
 		User    User
 	}
+	TplEmailAddUser struct {
+		Context context.Context
+		Site    Site
+		NewUser User
+		AddedBy string
+	}
 	TplEmailImportError struct {
 		Error error
 	}
@@ -304,6 +310,7 @@ func (t TplEmailWelcome) Render() ([]byte, error)       { return E("email_welcom
 func (t TplEmailForgotSite) Render() ([]byte, error)    { return E("email_forgot_site.gotxt", t) }
 func (t TplEmailPasswordReset) Render() ([]byte, error) { return E("email_password_reset.gotxt", t) }
 func (t TplEmailVerify) Render() ([]byte, error)        { return E("email_verify.gotxt", t) }
+func (t TplEmailAddUser) Render() ([]byte, error)       { return E("email_adduser.gotxt", t) }
 func (t TplEmailImportError) Render() ([]byte, error)   { return E("email_import_error.gotxt", t) }
 func (t TplEmailExportDone) Render() ([]byte, error)    { return E("email_export_done.gotxt", t) }
 func (t TplEmailImportDone) Render() ([]byte, error)    { return E("email_import_done.gotxt", t) }
