@@ -261,7 +261,7 @@ func (m *ms) Persist(ctx context.Context) ([]Hit, error) {
 		}
 		ctx = WithSite(ctx, &site)
 
-		if h.Session.IsZero() {
+		if h.Session.IsZero() && site.Settings.Collect.Has(CollectSession) {
 			h.Session, h.FirstVisit = m.session(ctx, site.ID, h.UserSessionID, h.Path, h.UserAgentHeader, h.RemoteAddr)
 		}
 

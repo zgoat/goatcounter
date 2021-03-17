@@ -26,6 +26,7 @@ const (
 	CollectLocation                                  // 16
 	CollectLocationRegion                            // 32
 	CollectLanguage                                  // 64
+	CollectSession                                   // 128
 )
 
 type (
@@ -167,7 +168,7 @@ func (ss *SiteSettings) Defaults() {
 		ss.Views = Views{{Name: "default", Period: "week"}}
 	}
 	if ss.Collect == 0 {
-		ss.Collect = CollectReferrer | CollectUserAgent | CollectScreenSize | CollectLocation | CollectLocationRegion
+		ss.Collect = CollectReferrer | CollectUserAgent | CollectScreenSize | CollectLocation | CollectLocationRegion | CollectSession
 	}
 	// Collecting region without country makes no sense.
 	if ss.Collect.Has(CollectLocationRegion) {
@@ -184,6 +185,11 @@ type CollectFlag struct {
 //func (ss SiteSettings) CollectFlags() []zint.Bitflag8 {
 func (ss SiteSettings) CollectFlags() []CollectFlag {
 	return []CollectFlag{
+		{
+			Label: "Sessions",
+			Help:  "Identify unique visitors",
+			Flag:  CollectSession,
+		},
 		{
 			Label: "Referrer",
 			Help:  "Referrer header and campaign parameters",
